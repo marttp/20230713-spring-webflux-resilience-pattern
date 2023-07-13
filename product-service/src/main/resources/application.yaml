@@ -1,0 +1,80 @@
+server:
+  port: 8080
+
+compute:
+  service:
+    endpoint: http://localhost:8082
+rating:
+  service:
+    endpoint: http://localhost:8081/ratings
+
+resilience4j:
+###### Retry ########
+  retry:
+    configs:
+      default:
+        max-attempts: 3
+        wait-duration: 5s
+        ignore-exceptions:
+          - org.springframework.web.reactive.function.client.WebClientResponseException.BadRequest
+    instances:
+      ratingService:
+        base-config: default
+###### Circuit Breaker ########
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10 # 10 requests in the sliding window
+        permitted-number-of-calls-in-half-open-state: 10
+        wait-duration-in-open-state: 10 # wait for 10 seconds before sending any more requests to the service (for change to HALF_OPEN state)
+        failure-rate-threshold: 6 # if the 6 requests are failing in the 10 requests, keep the circuit breaker in CLOSED state
+    instances:
+      ratingService:
+        base-config: default
+        register-health-indicator: true
+###### Rate limit ########
+  ratelimiter:
+    configs:
+      default:
+        limit-for-period: 5
+        limit-refresh-period: 60s
+        timeout-duration: 0
+    instances:
+      squareLimit:
+        base-config: default
+###### Time limit/Timeout ########
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 3s
+        cancel-running-future: true
+    instances:
+      ratingService:
+        base-config: default
+###### Bulkhead ########
+  bulkhead:
+    configs:
+      default:
+        maxConcurrentCalls: 100
+    instances:
+        ratingService:
+            base-config: default
+  thread-pool-bulkhead:
+    configs:
+      default:
+        maxThreadPoolSize: 4
+        coreThreadPoolSize: 2
+        queueCapacity: 2
+    instances:
+      ratingService:
+        base-config: default
+###########
+management:
+  health:
+    circuitbreakers:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: '*'
