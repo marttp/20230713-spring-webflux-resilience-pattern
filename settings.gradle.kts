@@ -4,6 +4,6 @@ rootProject.name = "resilience-project"
 include(
     "product-service",
     "rating-service",
-    "long-compute-service"
+    "long-compute-service",
+    "common"
 )
-include("common")
